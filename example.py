@@ -15,9 +15,24 @@ if __name__ == "__main__":
 
     client = LandfilesClient(client_id, client_secret, username, password)
 
-    farm = client.get_farm("F-9b0f9331-4ded-4ea0-9549-d01dec0f6897")
-    print(farm.list_parcels()[0].api_data)
-    # print(farm.api_data)
-    pub = farm.list_publications()[0]
+    print("Groups:")
+    print(client.list_groups())
 
-    group = client.get_group("GR-183ef8d8-e07c-4697-88b7-6611633cf252")
+    print()
+    print("Farms:")
+    farms = client.list_farms()
+    print(farms)
+
+    farm = farms[0]
+    print()
+    print(f"Parcels of farm '{farm}':")
+    print(farm.list_parcels())
+
+    parcel = farm.list_parcels()[0]
+    print()
+    print(f"Data of parcel '{parcel}':")
+    print(parcel.api_data)
+
+    print()
+    print(f"Publications of farm '{farm}':")
+    print(farm.list_publications())

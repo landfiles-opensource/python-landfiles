@@ -17,10 +17,10 @@ class APIDataWrapper:
         self.id_field = id_field or self.default_id_field
 
     def __repr__(self):
-        return f"{self.__class__.__name__} {self.id}"
+        return f"{self.__class__.__name__} {self.id} ({self.api_data.get('name', '')})"
 
     def __str__(self):
-        return str(self)
+        return self.api_data["name"]
 
     @property
     def id(self):
