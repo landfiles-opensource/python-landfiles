@@ -16,7 +16,12 @@ if __name__ == "__main__":
     client = LandfilesClient(client_id, client_secret, username, password)
 
     print("Groups:")
-    print(client.list_groups())
+    groups = client.list_groups()
+    print(groups)
+
+    group = groups[0]
+    print(f"Parcels of group '{group}':")
+    #print(list(group.list_parcels()))
 
     print()
     print("Farms:")
@@ -36,3 +41,11 @@ if __name__ == "__main__":
     print()
     print(f"Publications of farm '{farm}':")
     print(farm.list_publications())
+
+    print()
+    print(f"Parcels with no COLL_00070 of farm '{farm}':")
+    print(list(farm.list_parcels_with_all_missing_data(["COLL_00070"])))
+
+    print()
+    print(f"Parcels with no COLL_00070 of group '{group}':")
+    #print(list(group.list_parcels_with_all_missing_data(["COLL_00070"])))

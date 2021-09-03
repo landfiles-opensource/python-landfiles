@@ -40,6 +40,26 @@ class Farm(APIDataWrapper):
             for x in self.api_client.get(f"/landfilesservice/v1/external/parcels/farms/{self.id}")["parcels"]
         ]
 
+    def list_parcels_with_any_missing_data(self, data_cols):
+        for parcel in self.list_parcels():
+            if any(col not in parcel.data for col in data_cols):
+                yield parcel
+
+    def list_parcels_with_all_missing_data(self, data_cols):
+        for parcel in self.list_parcels():
+            if all(col not in parcel.data for col in data_cols):
+                yield parcel
+
+    def list_parcels_with_any_data(self, data_cols):
+        for parcel in self.list_parcels():
+            if any(col in parcel.data for col in data_cols):
+                yield parcel
+
+    def list_parcels_with_all_data(self, data_cols):
+        for parcel in self.list_parcels():
+            if all(col in parcel.data for col in data_cols):
+                yield parcel
+
 
 class ParcelData(dict):
     def __str__(self):
@@ -84,6 +104,26 @@ class Group(APIDataWrapper):
             for x in self.api_client.get(f"/landfilesservice/v1/external/farms/groups/{self.id}")["farms"]
         ]
 
+    def _iterate_farms(self, farm_method, *farm_args, **farm_kwargs):
+        for farm in self.list_farms():
+            yield from getattr(farm, farm_method)(*farm_args, **farm_kwargs)
+
+    def list_parcels(self):
+        return self._iterate_farms("list_parcels")
+
+    def list_parcels_with_any_missing_data(self, data_cols):
+        return self._iterate_farms("list_parcels_with_any_missing_data", data_cols)
+
+    def list_parcels_with_all_missing_data(self, data_cols):
+        return self._iterate_farms("list_parcels_with_all_missing_data", data_cols)
+
+    def list_parcels_with_any_data(self, data_cols):
+        return self._iterate_farms("list_parcels_with_any_data", data_cols)
+
+    def list_parcels_with_all_data(self, data_cols):
+        return self._iterate_farms("list_parcels_with_all_data", data_cols)
+
+
 class LandfilesClient:
     BASE_URL = "https://api.landfiles.fr/api"
 
@@ -95,7 +135,11 @@ class LandfilesClient:
             "password": password,
             "grant_type": "password",
         })
-        self.token = resp.json()["access_token"]
+        try:
+            data = resp.json()
+            self.token = data["access_token"]
+        except KeyError:
+            raise ValueError(f"'access_token' key missing in the API response: {data}")
 
     def build_url(self, endpoint):
         return self.BASE_URL + endpoint
