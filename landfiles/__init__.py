@@ -1,3 +1,5 @@
+import datetime as dt
+
 import requests
 from requests.auth import HTTPBasicAuth
 
@@ -10,17 +12,19 @@ class APIError(Exception):
 
 class APIDataWrapper:
     default_id_field = "uuid"
+    default_str_field = None
 
-    def __init__(self, api_data, api_client, id_field=None):
+    def __init__(self, api_data, api_client, id_field=None, str_field=None):
         self.api_data = api_data
         self.api_client = api_client
         self.id_field = id_field or self.default_id_field
+        self.str_field = str_field or self.default_str_field
 
     def __repr__(self):
-        return f"{self.__class__.__name__} {self.id} ({self.api_data.get('name', '')})"
+        return f"{self.__class__.__name__} {self.id} ({str(self)})"
 
     def __str__(self):
-        return self.api_data["name"]
+        return self.api_data[self.str_field or self.id_field]
 
     @property
     def id(self):
@@ -28,6 +32,8 @@ class APIDataWrapper:
 
 
 class Farm(APIDataWrapper):
+    default_str_field = "name"
+
     def list_publications(self):
         return [
             Publication(x, self.api_client)
@@ -68,6 +74,7 @@ class ParcelData(dict):
 
 class Parcel(APIDataWrapper):
     default_id_field = "id"
+    default_str_field = "name"
 
     @property
     def data(self):
@@ -97,7 +104,28 @@ class Publication(APIDataWrapper):
             return
 
 
+class GroupParcelObservation(APIDataWrapper):
+    default_id_field = "id"
+
+    def __str__(self):
+        return self.date.strftime("%Y-%m-%d %H:%M")
+
+    @property
+    def date(self):
+        return dt.datetime.fromtimestamp(self.api_data["date"] / 1000)
+
+    @property
+    def data(self):
+        return self.api_data["data"]
+
+    @property
+    def url(self):
+        return self.api_data["url"]
+
+
 class Group(APIDataWrapper):
+    default_str_field = "name"
+
     def list_farms(self):
         return [
             Farm(x, self.api_client, id_field="id")
@@ -122,6 +150,16 @@ class Group(APIDataWrapper):
 
     def list_parcels_with_all_data(self, data_cols):
         return self._iterate_farms("list_parcels_with_all_data", data_cols)
+
+    def list_observations(self, start_date=None, end_date=None):
+        if start_date is None:
+            start_date = "0000-01-01"
+        if end_date is None:
+            end_date = "9999-12-31"
+        return {
+            x["parcelUuid"]: [GroupParcelObservation(obs, self.api_client) for obs in x["observations"]]
+            for x in self.api_client.get(f"/landfilesservice/v1/external/observations/groups/{self.id}?startDate={start_date}&endDate={end_date}")
+        }
 
 
 class LandfilesClient:
