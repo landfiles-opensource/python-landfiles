@@ -36,4 +36,5 @@ if __name__ == "__main__":
     print(f"Observations of group '{group_id}'")
     group = client.get_group(group_id)
     group_obs = group.list_observations()
+    print(sorted([td.type for td in group_obs.get_measure_typedefs()]))
     print(list(group_obs.list_parcels_with_all_data(["COLL_00070", "COLL_00404"])))

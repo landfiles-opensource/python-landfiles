@@ -2,6 +2,14 @@ from collections import namedtuple
 from itertools import chain
 
 
+class MeasureTypeDef(namedtuple("MeasureTypeDef", "type label")):
+    def __eq__(self, other):
+        return self.type == other.type
+
+    def __hash__(self):
+        return hash(self.type)
+
+
 _Measure = namedtuple(
     "Measure",
     "type label value value_type value_label",
@@ -30,14 +38,17 @@ class GroupParcelObservation(_GroupParcelObservation):
 
 
 class GroupParcelObservationDict(dict):
-    def get_measure_types(self):
+    def get_measure_typedefs_by_parcel(self):
         return {
             parcel_id: set(chain.from_iterable([
-                list(obs.measures)
+                [MeasureTypeDef(m.type, m.label) for m in obs.measures.values()]
                 for obs in observations
             ]))
             for parcel_id, observations in self.items()
         }
+
+    def get_measure_typedefs(self):
+        return set.union(*self.get_measure_typedefs_by_parcel().values())
 
     def _filter_parcels(self, filter_func):
         for parcel_id, observations in self.items():
