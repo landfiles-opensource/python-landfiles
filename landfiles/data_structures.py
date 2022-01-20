@@ -30,6 +30,15 @@ class GroupParcelObservation(_GroupParcelObservation):
 
 
 class GroupParcelObservationDict(dict):
+    def get_measure_types(self):
+        return {
+            parcel_id: set(chain.from_iterable([
+                list(obs.measures)
+                for obs in observations
+            ]))
+            for parcel_id, observations in self.items()
+        }
+
     def _filter_parcels(self, filter_func):
         for parcel_id, observations in self.items():
             if filter_func(observations):
