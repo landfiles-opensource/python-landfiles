@@ -11,8 +11,6 @@ from .data_structures import (
     ParcelObservationList,
 )
 
-__version__ = "0.0.1"
-
 
 class APIError(Exception):
     def __init__(self, message, api_response):
