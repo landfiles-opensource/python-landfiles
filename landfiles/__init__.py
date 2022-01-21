@@ -4,10 +4,11 @@ import requests
 from requests.auth import HTTPBasicAuth
 
 from .data_structures import (
-    GroupParcelObservation,
-    GroupParcelObservationDict,
     Measure,
     MeasureDict,
+    ParcelObservation,
+    ParcelObservationDict,
+    ParcelObservationList,
 )
 
 
@@ -44,7 +45,9 @@ class Farm(APIDataWrapper):
     def list_parcels(self):
         return [
             Parcel(x, self.api_client)
-            for x in self.api_client.get(f"/landfilesservice/v1/external/parcels/farms/{self.id}")["parcels"]
+            for x in self.api_client.get(
+                f"/landfilesservice/v1/external/parcels/farms/{self.id}"
+            )["parcels"]
         ]
 
 
@@ -63,7 +66,9 @@ class Group(APIDataWrapper):
     def list_farms(self):
         return [
             Farm(x, self.api_client, id_field="id")
-            for x in self.api_client.get(f"/landfilesservice/v1/external/farms/groups/{self.id}")["farms"]
+            for x in self.api_client.get(
+                f"/landfilesservice/v1/external/farms/groups/{self.id}"
+            )["farms"]
         ]
 
     def list_observations(self, start_date=None, end_date=None):
@@ -74,27 +79,33 @@ class Group(APIDataWrapper):
         data = self.api_client.get(
             f"/landfilesservice/v1/external/observations/groups/{self.id}?startDate={start_date}&endDate={end_date}"
         )
-        return GroupParcelObservationDict({
-            parcel["parcelUuid"]: [
-                GroupParcelObservation(
-                    id=obs["id"],
-                    date=dt.datetime.fromtimestamp(obs["date"] / 1000),
-                    url=obs["url"],
-                    measures=MeasureDict({
-                        type: Measure(
-                            type=type,
-                            label=data["label"],
-                            value=data["value"],
-                            value_type=data["type"],
-                            value_label=data.get("valueLabel"),
+        return ParcelObservationDict(
+            {
+                parcel["parcelUuid"]: ParcelObservationList(
+                    [
+                        ParcelObservation(
+                            id=obs["id"],
+                            date=dt.datetime.fromtimestamp(obs["date"] / 1000),
+                            url=obs["url"],
+                            measures=MeasureDict(
+                                {
+                                    type: Measure(
+                                        type=type,
+                                        label=data["label"],
+                                        value=data["value"],
+                                        value_type=data["type"],
+                                        value_label=data.get("valueLabel"),
+                                    )
+                                    for type, data in obs["data"].items()
+                                }
+                            ),
                         )
-                        for type, data in obs["data"].items()
-                    }),
+                        for obs in parcel["observations"]
+                    ]
                 )
-                for obs in parcel["observations"]
-            ]
-            for parcel in data
-        })
+                for parcel in data
+            }
+        )
 
     def _iterate_farms(self, farm_method, *farm_args, **farm_kwargs):
         for farm in self.list_farms():
@@ -104,19 +115,23 @@ class Group(APIDataWrapper):
         for farm in self.list_farms():
             yield from farm.list_parcels()
 
-    
+
 class LandfilesClient:
     BASE_URL = "https://api.landfiles.fr/api"
 
     def __init__(self, client_id, client_secret, username, password, base_url=None):
         self.base_url = base_url or self.BASE_URL
-        resp = requests.post(self.build_url("/authenticationservice/auth/oauth/token"), auth=HTTPBasicAuth(client_id, client_secret), data={
-            "client_id": client_id,
-            "client_secret": client_secret,
-            "username": username,
-            "password": password,
-            "grant_type": "password",
-        })
+        resp = requests.post(
+            self.build_url("/authenticationservice/auth/oauth/token"),
+            auth=HTTPBasicAuth(client_id, client_secret),
+            data={
+                "client_id": client_id,
+                "client_secret": client_secret,
+                "username": username,
+                "password": password,
+                "grant_type": "password",
+            },
+        )
         try:
             data = resp.json()
             self.token = data["access_token"]
@@ -127,7 +142,11 @@ class LandfilesClient:
         return self.base_url + endpoint
 
     def get(self, endpoint, **kwargs):
-        resp = requests.get(self.build_url(endpoint), headers={"Authorization": f"Bearer {self.token}"}, **kwargs)
+        resp = requests.get(
+            self.build_url(endpoint),
+            headers={"Authorization": f"Bearer {self.token}"},
+            **kwargs,
+        )
         data = resp.json()
         if "error" in data:
             raise APIError(data, api_response=resp)
@@ -143,10 +162,7 @@ class LandfilesClient:
         return Farm(self.get(f"/landfilesservice/v1/farms/{farm_id}"), self)
 
     def list_groups(self):
-        return [
-            Group(x, self)
-            for x in self.get("/landfilesservice/v1/groups/me")
-        ]
+        return [Group(x, self) for x in self.get("/landfilesservice/v1/groups/me")]
 
     def get_group(self, group_id):
         return Group(self.get(f"/landfilesservice/v1/groups/{group_id}"), self)

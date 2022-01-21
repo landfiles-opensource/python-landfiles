@@ -10,7 +10,9 @@ if __name__ == "__main__":
         username = sys.argv[3]
         password = sys.argv[4]
     except IndexError:
-        print("Usage : python example.py <client_id> <client_secret> <username> <password>")
+        print(
+            "Usage : python example.py <client_id> <client_secret> <username> <password>"
+        )
         sys.exit(1)
 
     client = LandfilesClient(client_id, client_secret, username, password)
@@ -36,5 +38,10 @@ if __name__ == "__main__":
     print(f"Observations of group '{group_id}'")
     group = client.get_group(group_id)
     group_obs = group.list_observations()
-    print(sorted([td.type for td in group_obs.get_measure_typedefs()]))
-    print(list(group_obs.list_parcels_with_all_data(["COLL_00070", "COLL_00404"])))
+    print(len(group_obs))
+    print(len(group_obs.filter(any_measured=["COLL_00070", "COLL_00404"])))
+    print(
+        group_obs.filter(all_measured=["COLL_00070", "COLL_00404"])[
+            "PA-c5192de0-2e06-4cbe-8358-5c0785946130"
+        ]
+    )
