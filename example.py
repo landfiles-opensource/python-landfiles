@@ -5,19 +5,20 @@ from landfiles import LandfilesClient
 
 if __name__ == "__main__":
     try:
-        client_id = sys.argv[1]
-        client_secret = sys.argv[2]
-        username = sys.argv[3]
-        password = sys.argv[4]
+        username = sys.argv[1]
+        password = sys.argv[2]
+        basic_token = sys.argv[3]
     except IndexError:
         print(
-            "Usage : python example.py <client_id> <client_secret> <username> <password>"
+            "Usage : python example.py <username> <password> <basic_token>"
+        )
+        print(
+            "Ex : python example.py agri@landfiles.fr 1234 dfgkpoere4zfe89fze1496"
         )
         sys.exit(1)
 
-    client = LandfilesClient(client_id, client_secret, username, password)
+    client = LandfilesClient(username, password, auth=f"Basic {basic_token}")
 
-    """
     print("Groups:")
     groups = client.list_groups()
     print(groups)
@@ -31,7 +32,6 @@ if __name__ == "__main__":
     print()
     print(f"Parcels of farm '{farm}':")
     print(farm.list_parcels())
-    """
 
     group_id = "GR-5b9f8337-bbf7-4388-8c65-4e215164700c"
     print()

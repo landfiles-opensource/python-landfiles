@@ -12,10 +12,8 @@ from .data_structures import (
 )
 
 
-class APIError(Exception):
-    def __init__(self, message, api_response):
-        super().__init__(message)
-        self.api_response = api_response
+class APIError(requests.exceptions.RequestException):
+    pass
 
 
 class APIDataWrapper:
@@ -119,38 +117,41 @@ class Group(APIDataWrapper):
 class LandfilesClient:
     BASE_URL = "https://api.landfiles.fr/api"
 
-    def __init__(self, client_id, client_secret, username, password, base_url=None):
+    def __init__(self, username, password, auth=None, base_url=None):
         self.base_url = base_url or self.BASE_URL
+        headers = {}
+        if auth:
+            headers["Authorization"] = auth
         resp = requests.post(
             self.build_url("/authenticationservice/auth/oauth/token"),
-            auth=HTTPBasicAuth(client_id, client_secret),
+            headers=headers,
             data={
-                "client_id": client_id,
-                "client_secret": client_secret,
                 "username": username,
                 "password": password,
                 "grant_type": "password",
+                "scope": "mobileclient",
             },
         )
         try:
             data = resp.json()
             self.token = data["access_token"]
         except KeyError:
-            raise ValueError(f"'access_token' key missing in the API response: {data}")
+            raise APIError(f"'access_token' key missing in the API response: {data}", response=resp)
 
     def build_url(self, endpoint):
         return self.base_url + endpoint
 
     def get(self, endpoint, **kwargs):
-        resp = requests.get(
-            self.build_url(endpoint),
-            headers={"Authorization": f"Bearer {self.token}"},
-            **kwargs,
-        )
-        data = resp.json()
-        if "error" in data:
-            raise APIError(data, api_response=resp)
-        return data
+        try:
+            resp = requests.get(
+                self.build_url(endpoint),
+                headers={"Authorization": f"Bearer {self.token}"},
+                **kwargs,
+            )
+            resp.raise_for_status()
+        except requests.exceptions.RequestException as e:
+            raise APIError(str(e), response=e.response, request=e.request) from e
+        return resp.json()
 
     def list_farms(self):
         return [
